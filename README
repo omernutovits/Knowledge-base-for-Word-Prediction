@@ -1,0 +1,190 @@
+Izhak Moalem	205489230
+Omer Nutovitz	205926587
+
+Ngram
+
+insret the args as follow:
+1. jar_path
+2. output_path (bucket)
+3. write "yes" or "no" if you want to run the program with a combiner 
+
+this product has 4 map reduce jobs
+
+	1. job 1 maps three grams from the corpus; filter illegal three grams, and sends the sum of occurrences of each three gram in each corpus to the reducer
+	   the reducer sums the occurrences of each three gram at each corpus, and sums the big_counter_N
+
+	2. job 2 maps the occurrences of each corpus as a key, and sends the relevant Nr Tr to the reducer,
+	   job 2 also sends to the reducer with the occurrences of each corpus as a key, the three gram as a val
+
+	   base on the r given as a key, the reducer sums and calculate  Nr Tr for each r
+	   job 2 has a Partitioner that takes care that Nr Tr will be calculated first, and then do the join of each calculated Nr Tr of each corpus to all three grams that has the relevant r occurrences (mapper tags the key-val of the trigram with "zzz", and key-val with occurrences with "xxx" ==> therefore all of the "xxx" will be calculated before the reducer will receive the three gram that was tagged with "zzz")
+
+	   so for each three gram - reducer write the three gram as a key for each corpus (once with Nr Tr of corpus one , and once for corpus two)
+
+	3. job 3 mapper just passes the key vals that was received from job 2
+	   reducer saves the last three gram, if the three gram has not changed - reducer sums the Nr Tr
+	   when three gram has changed - reducer calculate probabilty from the given Nr Tr and big_counter_N, and writes three gram with the probability
+
+	4. job 4 is executing the sort - (w1w2 alphabetically ascending) and then (w1w2w3 probabiliy descending).
+	   mapper sends as key - w1w2 and then (1 - probability) (so the keys will sorted without implementing compareTo)
+	   reducer receives the sorted keys, and writes the three gram with the fixed probability (1 - probability)
+
+
+מילים מעניינות והסתברותן:
+
+1.
+יין כל אחד		1.442503894111269E-10
+יין כל אותו		1.1973133595688523E-10
+יין כל השנה		1.164470742054391E-10
+יין כל היום		6.154621257081772E-11
+יין כל ימי		5.42592637486905E-11
+
+2.
+מפתח שמות מפתח	1.5363210703611685E-10
+מפתח שמות וענינים	1.1449408088282098E-10
+מפתח שמות ומקומות	8.169420695480767E-11
+מפתח שמות אנשים	8.107681193081362E-11
+מפתח שמות הספרים	6.751299519436316E-11
+
+3.
+אהבה ואחוה ורעות	1.4677437043530972E-10
+אהבה ואחוה ביניהם	1.456335052552049E-10
+אהבה ואחוה בין	1.428724916152646E-10
+אהבה ואחוה וריעות	1.0079515000427364E-10
+אהבה ואחוה שלום	3.471878340377543E-11
+
+4.
+קצת יותר פרטים	1.6769097221924767E-10
+קצת יותר נוח		1.6751089404465347E-10
+קצת יותר או		1.6705892225132857E-10
+קצת יותר מעשר	1.6677348391169744E-10
+קצת יותר משלושה	1.6535028901643045E-10
+
+5.
+קצת פחות משליש	1.65779612260053E-10
+קצת פחות או		1.5984125134593796E-10
+קצת פחות ממחצית	1.5759038518581292E-10
+קצת פחות מאשר	1.5670109654308817E-10
+קצת פחות מזה	7.713119032359828E-11
+
+6.
+היה עליו לספק	1.6769097221924767E-10
+היה עליו להבין	1.6746926068123003E-10
+היה עליו לארגן	1.6705892225132857E-10
+היה עליו לחיות	1.6705892225132857E-10
+היה עליו לשאול	1.6705892225132857E-10
+
+7.
+כל ניסיון קודם		1.677125105459254E-10
+כל ניסיון להגיע	1.6593260099284635E-10
+כל ניסיון נוסף		1.6553602932845024E-10
+כל ניסיון להציג	1.61410884658153E-10
+כל ניסיון לכפות	1.610634958737478E-10
+
+8.
+אמא היתה בת	1.5984125134593796E-10
+אמא היתה מספרת	1.5596124391947797E-10
+אמא היתה אשה	1.3638556950468228E-10
+אמא היתה אומרת	5.953149084803044E-11
+
+9.
+אף על השאלה	1.6746926068123003E-10
+אף על שאלה		1.6700185678786283E-10
+אף על יסוד		1.6681689363196028E-10
+אף על אנשים		1.6681633852044797E-10
+אף על על		1.6681633852044797E-10
+
+10.
+שמים וארץ היו	1.6751089404465347E-10
+שמים וארץ היתה	1.6751089404465347E-10
+שמים וארץ או	1.6668377789130773E-10
+שמים וארץ כאברהם	1.6570100846990954E-10
+שמים וארץ של	1.6570100846990954E-10
+
+
+there is optional combiner for step 1,
+
+statistics with a combiner on job 1:
+
+job 1:
+mapper:
+Map input records=163471963
+Map output records=138881206
+Map output bytes=2298447009
+Map output materialized bytes=31414183
+Input split bytes=3264
+
+combiner:
+Combine input records=138881206
+Combine output records=1650346
+
+reducer:
+Reduce input groups=1650269
+Reduce shuffle bytes=31414183
+Reduce input records=1650346
+Reduce output records=1650268
+Spilled Records=4892878
+
+
+job 2:
+mapper:
+Map input records=1650268
+Map output records=6601072
+Map output bytes=161002221
+Map output materialized bytes=65285513
+Input split bytes=791
+
+reducer:
+Reduce input groups=13640
+Reduce shuffle bytes=65285513
+Reduce input records=6601072
+Reduce output records=3300536
+Spilled Records=13202144
+
+job 3:
+mapper:
+Map input records=3300536
+Map output records=3300536
+Map output bytes=126752186
+Map output materialized bytes=53970943
+Input split bytes=791
+
+reducer:
+Reduce input groups=1650268
+Reduce shuffle bytes=53970943
+Reduce input records=3300536
+Reduce output records=1650261
+Spilled Records=6601072
+
+job 4:
+mapper:
+Map input records=1650261
+Map output records=1650261
+Map output bytes=74641462
+Map output materialized bytes=32324573
+Input split bytes=791
+
+reducer:
+Reduce input groups=1650261
+Reduce shuffle bytes=32324573
+Reduce input records=1650261
+Reduce output records=1650261
+Spilled Records=3300522
+
+
+
+statistics without a combiner:
+job 1:
+mapper:
+Map input records=163471963
+Map output records=138881206
+Map output bytes=2298447009
+Map output materialized bytes=401294370
+Input split bytes=3264
+
+reducer:
+Reduce input groups=1650269
+Reduce shuffle bytes=401294370
+Reduce input records=138881206
+Reduce output records=1650268
+Spilled Records=411757548
